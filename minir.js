@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var program = require('commander');
 var connect = require('connect');
 var inject  = require('connect-inject');
