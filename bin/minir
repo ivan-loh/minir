@@ -5,6 +5,7 @@ var connect = require('connect');
 var inject  = require('connect-inject');
 var watch   = require('watch');
 var http    = require('http');
+var fs      = require('fs');
 
 program
   .version('0.0.1')
@@ -12,7 +13,8 @@ program
   .option('-p, --port [value]', 'Port to server on')
   .parse(process.argv);
 
-var dir      = program.dir || './';
+var dir      = program.dir || '.';
+    dir      = fs.realpathSync(dir);
 var port     = program.port || 3000;
 var snippets = [
   "<script src=\"/socket.io/socket.io.js\"></script>",

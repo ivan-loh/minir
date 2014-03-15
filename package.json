@@ -1,6 +1,6 @@
 {
   "name": "minir",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Mini Live Reload Server",
   "main": "./bin/minir",
   "bin": { "minir": "./bin/minir" },
