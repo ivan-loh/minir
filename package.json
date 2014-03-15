@@ -1,8 +1,9 @@
 {
   "name": "minir",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Mini Live Reload Server",
-  "main": "minir",
+  "main": "./bin/minir",
+  "bin": { "minir": "./bin/minir" };
   "dependencies": {
     "commander": "~2.1.0",
     "connect": "~2.14.2",
