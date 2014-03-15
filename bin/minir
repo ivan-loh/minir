@@ -33,7 +33,7 @@ var io     = require('socket.io').listen(server);
 
 
 // Start Monitor
-watch.watchTree(dir, function (f, curr, prev) {
+watch.watchTree(dir, { persistent: true, interval: 500 }, function (f, curr, prev) {
   if (typeof f == "object" && prev === null && curr === null) {
     // Finished walking the tree
   } else  if (prev === null) {
