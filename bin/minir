@@ -1,53 +1,68 @@
 #!/usr/bin/env node
 
 var program = require('commander');
-var connect = require('connect');
-var inject  = require('connect-inject');
-var watch   = require('watch');
-var http    = require('http');
-var fs      = require('fs');
 
-program
-  .version('0.0.6')
-  .option('-d, --dir  [value]', 'Directory to serve')
-  .option('-p, --port [value]', 'Port to server on')
-  .parse(process.argv);
-
-var dir      = program.dir || '.';
-    dir      = fs.realpathSync(dir);
-var port     = program.port || 3000;
-var snippets = [
-  "<script src=\"/socket.io/socket.io.js\"></script>",
-  "<script>io.connect(window.location.origin).on('reload', function (data) { window.location.reload(); });</script>",
-]
+    program.version('0.0.8')
+           .option('-d, --dir  [value]', 'Directory to serve')
+           .option('-p, --port [value]', 'Port to server on')
+           .parse(process.argv);
 
 
-var app = connect()
-  .use(connect.logger('dev'))
-  .use(connect.directory(dir))
-  .use(inject({ snippet: snippets }))
-  .use(connect.static(dir));
 
+function inject() {
+  var snippets = [
+    "<script src=\"/socket.io/socket.io.js\"></script>",
+    "<script>io.connect(window.location.origin).on('reload', function (data) { window.location.reload(); });</script>",
+  ];
+  return require('connect-inject')({snippet:snippets});
+}
 
-var server = http.createServer(app);
-var io     = require('socket.io').listen(server);
+function Minir(options) {
 
+  var connect = require('connect');
+  var app     = connect().use(connect.directory(options.path))
+                         .use(inject())
+                         .use(connect.static(options.path));
 
-// Start Monitor
-watch.watchTree(dir, { persistent: true, interval: 500 }, function (f, curr, prev) {
-  if (typeof f == "object" && prev === null && curr === null) {
-    // Finished walking the tree
-  } else  if (prev === null) {
-    // f is a new File
-  } else if ( curr != null && curr.nlink === 0) {
-    // f was removed
-  } else {
-    // f was changed
-    io.sockets.emit('reload');
+  var server  = require('http').createServer(app);
+  var io      = require('socket.io').listen(server, { log: false });
+      io.enable('browser client minification');
+      io.enable('browser client etag');
+      io.enable('browser client gzip');
+//      io.set('log level', 1);
+
+  var w       = false;
+
+  function watch(path, callback) {
+    require('watch')
+      .watchTree(path, { persistent: true, interval: 500 }, function (f, curr, prev) {
+        if (typeof f == "object" && prev === null && curr === null) {
+        } else if (prev === null) {
+        } else if (curr != null && curr.nlink === 0) {
+        } else {
+          callback();
+        }
+      });
+    return true;
   }
-});
+
+  io.sockets.on('connection', function () {
+    if (w) return;
+    w = watch(options.path, function () {
+      io.sockets.emit('reload');
+    }); 
+  });
+
+  server.listen(options.port, function () {
+    console.log('Minir started');
+    console.log('port: ' + options.port);
+    console.log('path: ' + options.path);
+  });
+}
 
 
 
-// Start Server
-server.listen(port);
+var path = program.dir || '.';
+    path = require('fs').realpathSync(path);
+
+new Minir({ "path": path, "port": program.port || 3000 });
