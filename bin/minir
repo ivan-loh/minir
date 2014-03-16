@@ -8,7 +8,7 @@ var http    = require('http');
 var fs      = require('fs');
 
 program
-  .version('0.0.1')
+  .version('0.0.6')
   .option('-d, --dir  [value]', 'Directory to serve')
   .option('-p, --port [value]', 'Port to server on')
   .parse(process.argv);
@@ -24,6 +24,7 @@ var snippets = [
 
 var app = connect()
   .use(connect.logger('dev'))
+  .use(connect.directory(dir))
   .use(inject({ snippet: snippets }))
   .use(connect.static(dir));
 
