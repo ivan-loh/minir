@@ -2,43 +2,45 @@
 
 var program = require('commander');
 
-    program.version('0.0.8')
-           .option('-d, --dir  [value]', 'Directory to serve')
-           .option('-p, --port [value]', 'Port to server on')
+    program.version('0.1.0')
+           .option('-d, --dir      [value]', 'Directory to serve')
+           .option('-p, --port     [value]', 'Port to server on')
+           .option('-i, --interval [value]', 'Directory watch interval in ms, defaults to 500')
+           .option('-m, --maxAge   [value]', 'cache maxAge in ms defaults to 500')
            .parse(process.argv);
 
 
 
-function inject() {
-  var snippets = [
-    "<script src=\"/socket.io/socket.io.js\"></script>",
-    "<script>io.connect(window.location.origin).on('reload', function (data) { window.location.reload(); });</script>",
-  ];
-  return require('connect-inject')({snippet:snippets});
-}
+function Minir(opts) {
 
-function Minir(options) {
+  function inject() {
+    var snippets = [
+      "<script src=\"/socket.io/socket.io.js\"></script>",
+      "<script>io.connect(window.location.origin).on('reload', function (data) { window.location.reload(); });</script>",
+    ];
+    return require('connect-inject')({snippet:snippets});
+  }
 
   var connect = require('connect');
-  var app     = connect().use(connect.directory(options.path))
+  var app     = connect().use(connect.directory(opts.path))
                          .use(inject())
-                         .use(connect.static(options.path));
+                         .use(connect.static(opts.path, { maxAge : opts.maxAge }));
 
   var server  = require('http').createServer(app);
   var io      = require('socket.io').listen(server, { log: false });
       io.enable('browser client minification');
       io.enable('browser client etag');
       io.enable('browser client gzip');
-//      io.set('log level', 1);
+      io.set('log level', 1);
 
   var w       = false;
 
   function watch(path, callback) {
     require('watch')
-      .watchTree(path, { persistent: true, interval: 500 }, function (f, curr, prev) {
+      .watchTree(path, { persistent: true, interval: opts.interval }, function (f, curr, prev) {
         if (typeof f == "object" && prev === null && curr === null) {
         } else if (prev === null) {
-        } else if (curr != null && curr.nlink === 0) {
+        } else if (curr !== null && curr.nlink === 0) {
         } else {
           callback();
         }
@@ -48,21 +50,27 @@ function Minir(options) {
 
   io.sockets.on('connection', function () {
     if (w) return;
-    w = watch(options.path, function () {
+    w = watch(opts.path, function () {
       io.sockets.emit('reload');
     }); 
   });
 
-  server.listen(options.port, function () {
+  server.listen(opts.port, function () {
     console.log('Minir started');
-    console.log('port: ' + options.port);
-    console.log('path: ' + options.path);
+    console.log('port:     ' + opts.port);
+    console.log('path:     ' + opts.path);
+    console.log('interval: ' + opts.interval);
+    console.log('maxAge:   ' + opts.maxAge);
   });
 }
 
 
 
-var path = program.dir || '.';
-    path = require('fs').realpathSync(path);
+var options = {
+  path:     require('fs').realpathSync(program.dir || '.'),
+  port:     program.port || 3000,
+  interval: program.interval || 500,
+  maxAge:   program.maxAge || 500
+};
 
-new Minir({ "path": path, "port": program.port || 3000 });
+new Minir(options);
